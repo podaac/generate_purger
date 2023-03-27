@@ -75,7 +75,7 @@
         "scratch": {
             "path": "/mnt/data/processor/scratch",
             "threshold": 1,
-            "glob_ops": ["locks/*", "ghrsst_master_error_file_registry_*.txt", "heart_beat_*.txt"],
+            "glob_ops": ["locks/*", "ghrsst_master_error_file_registry_*.dat", "heart_beat_*.txt"],
             "action": "delete"    
         },
         "reports": {
