@@ -144,11 +144,16 @@ def report_ops(deleted, archived, logger):
     """Report on files that were deleted and/or archived."""
     
     logger.info("The following files have been removed from the file system...")
+    if len(deleted) == 0: logger.info("0 files have been removed.")
     for file in deleted: logger.info(file)
     
     logger.info("The following files have been archived and then removed from the file system...")
+    count = 0
     for zip_file, file_list in archived.items():
-        for file in file_list: logger.info(f"{zip_file}/{file}")
+        for file in file_list: 
+            logger.info(f"{zip_file}/{file}")
+            count += 1
+    if count == 0: logger.info("0 files have been archived and removed.")        
     
 def publish_event(message, logger):
     """Publish event to SNS Topic."""
