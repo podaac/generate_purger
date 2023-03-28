@@ -6,6 +6,20 @@ It deletes files from the archive, downloader, combiner, and processor component
 
 Top-level Generate repo: https://github.com/podaac/generate
 
+## purger config
+
+The purger program executes using a configuration file called `purger.json`. It can be hosted in an S3 bucket so you only need to upload a new configuration to make changes to how the program operates. This can include: removing or adding additional files to archive and delete or changing what gets archived.
+
+Description of configuration file parameters:
+`path`: The path to the files that should be archived and/or deleted.
+`threshold`: The age of the files/directories at which the file or directory should be deleted and/or archived.
+`glob_ops`: The glob pathname pattern expression used to locate the files/directories found in the `path` which should be archived and/or deleted.
+`action`: The action to take on the files/directories found at the `path`. 
+- `delete` removes the files/directories from the file system. 
+- `archive` zips the files/directories and places them in the `archive/component/pathname` directory and then removes them from the file system.
+
+(Note: All archives are removed after the specified threshold found at the `archive -> input_lists -> threshold` parameter.)
+
 ## aws infrastructure
 
 The purger program includes the following AWS services:
