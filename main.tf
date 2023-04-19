@@ -56,10 +56,6 @@ data "aws_sns_topic" "batch_failure_topic" {
   name = "${var.prefix}-batch-job-failure"
 }
 
-data "aws_sqs_queue" "pending_jobs" {
-  name = "${var.prefix}-pending-jobs"
-}
-
 data "aws_subnet" "private_application_subnet" {
   for_each = toset(data.aws_subnets.private_application_subnets.ids)
   id       = each.value

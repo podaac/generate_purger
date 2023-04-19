@@ -40,6 +40,24 @@
             "glob_ops": ["*.json"],
             "action": "archive"    
         },
+        "aqua_quicklook_sst": {
+            "path": "/mnt/data/combiner/downloads/MODIS_AQUA_L2_SST_OBPG_QUICKLOOK",
+            "threshold": 1,
+            "glob_ops": ["*.SST.nc"],
+            "action": "delete"    
+        },
+        "terra_quicklook_sst": {
+            "path": "/mnt/data/combiner/downloads/MODIS_TERRA_L2_SST_OBPG_QUICKLOOK",
+            "threshold": 1,
+            "glob_ops": ["*.SST.nc"],
+            "action": "delete"    
+        },
+        "viirs_quicklook_sst": {
+            "path": "/mnt/data/combiner/downloads/VIIRS_L2_SST_OBPG_QUICKLOOK",
+            "threshold": 1,
+            "glob_ops": ["*.SST.nc"],
+            "action": "delete"    
+        },
         "downloads": {
             "path": "/mnt/data/combiner/downloads",
             "threshold": 1,
