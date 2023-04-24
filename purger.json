@@ -1,7 +1,7 @@
 {
     "archive": {
         "error_zips": {
-            "path": "/mnt/data/archive",
+            "path": "/mnt/data/archive/error_checker",
             "threshold": 14,
             "glob_ops": ["*.zip"],
             "action": "delete"    
