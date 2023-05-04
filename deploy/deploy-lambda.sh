@@ -14,7 +14,7 @@ ZIP_PATH=$ROOT_PATH/$APP_NAME.zip
 APP_PATH=$ROOT_PATH/$APP_NAME.py
 
 # Install dependencies
-pip install --target $ROOT_PATH/package requests fsspec s3fs
+pip install --target $ROOT_PATH/package requests~=2.29.0 fsspec s3fs
 
 # Zip dependencies
 cd $ROOT_PATH/package

@@ -38,10 +38,10 @@ def purger_handler(event, context):
         
         # Generate lists of files to archive or delete
         generate_file_lists(purger_dict)
-        logger.info(f"Gathered list of files to archive and delete for Generate components.")
+        logger.info(f"Gathered list of files to archive and delete for Generate components from the EFS.")
         
         # Archive and delete files
-        deleted, archived = archive_and_delete(purger_dict)
+        deleted, archived = archive_and_delete(purger_dict, logger)
         
         # Report on operations
         report_ops(deleted, archived, logger)
@@ -67,7 +67,7 @@ def get_logger():
     console_handler = logging.StreamHandler()
 
     # Create a formatter and add it to the handler
-    console_format = logging.Formatter("%(asctime)s - %(module)s - %(levelname)s : %(message)s")
+    console_format = logging.Formatter("%(module)s - %(levelname)s : %(message)s")
     console_handler.setFormatter(console_format)
 
     # Add handlers to logger
@@ -102,7 +102,7 @@ def generate_file_lists(purger_dict):
                     if (file_age.days >= path_dict["threshold"]):
                         purger_dict[component][path_name]["file_list"].append(pathlib.Path(file))
     
-def archive_and_delete(purger_dict):
+def archive_and_delete(purger_dict, logger):
     """Archive and/or delete files found in list for each component path.
     
     Returns list of deleted files.
@@ -137,23 +137,25 @@ def archive_and_delete(purger_dict):
                         if file.is_file(): file.unlink()   # Remove after zipping
                         if file.is_dir(): shutil.rmtree(file)
                         archived[zip_file].append(file.name)
+                logger.info(f"{zip_file} created for: {path_name['path']}.")
     
     return deleted, archived
     
 def report_ops(deleted, archived, logger):
     """Report on files that were deleted and/or archived."""
     
-    logger.info("The following files have been removed from the file system...")
-    if len(deleted) == 0: logger.info("0 files have been removed.")
-    for file in deleted: logger.info(file)
+    if len(deleted) == 0: 
+        logger.info("0 files have been removed from the file system.")
+    else:
+        logger.info(f"{len(deleted)} files have been removed from the file system.")
     
-    logger.info("The following files have been archived and then removed from the file system...")
     count = 0
-    for zip_file, file_list in archived.items():
-        for file in file_list: 
-            logger.info(f"{zip_file}/{file}")
-            count += 1
-    if count == 0: logger.info("0 files have been archived and removed.")        
+    for file_list in archived.values():
+        count += len(file_list)
+    if count == 0: 
+        logger.info("0 files have been archived and then removed.")   
+    else:
+         logger.info(f"{count} files have been archived and then removed from the file system.")    
     
 def publish_event(message, logger):
     """Publish event to SNS Topic."""
