@@ -16,6 +16,7 @@ import os
 import pathlib
 import shutil
 import sys
+import traceback
 import zipfile
 
 # Third-party imports
@@ -49,6 +50,7 @@ def purger_handler(event, context):
     except Exception as error:
         message = f"The purger encountered the following error: {error}.\n"
         logger.error(message)
+        logger.error(traceback.format_exc())
         publish_event(message, logger)
     
 def get_logger():
@@ -129,6 +131,7 @@ def archive_and_delete(purger_dict, logger):
         for path_name, file_list in paths.items():
             if len(file_list) > 0:
                 zip_file = ARCHIVE_DIR.joinpath(component, f"{path_name}_{date}.zip")
+                logger.info(f"{zip_file} created.")
                 zip_file.parent.mkdir(parents=True, exist_ok=True)
                 archived[zip_file] = []
                 with zipfile.ZipFile(zip_file, mode='w') as archive:
@@ -137,7 +140,6 @@ def archive_and_delete(purger_dict, logger):
                         if file.is_file(): file.unlink()   # Remove after zipping
                         if file.is_dir(): shutil.rmtree(file)
                         archived[zip_file].append(file.name)
-                logger.info(f"{zip_file} created for: {path_name['path']}.")
     
     return deleted, archived
     
