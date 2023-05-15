@@ -19,7 +19,7 @@ resource "aws_lambda_function" "aws_lambda_purger" {
 
 # Upload purger configuration file to S3 bucket
 resource "aws_s3_object" "aws_s3_bucket_job_configuration" {
-  bucket                 = data.aws_s3_bucket.download_lists.id
+  bucket                 = data.aws_s3_bucket.generate_data.id
   key                    = "config/purger.json"
   server_side_encryption = "aws:kms"
   source                 = "purger.json"
@@ -110,15 +110,16 @@ resource "aws_iam_policy" "aws_lambda_execution_policy" {
         "Action" : [
           "s3:ListBucket"
         ],
-        "Resource" : "${data.aws_s3_bucket.download_lists.arn}"
+        "Resource" : "${data.aws_s3_bucket.generate_data.arn}"
       },
       {
-        "Sid" : "AllowGetObject",
+        "Sid" : "AllowGetPutObject",
         "Effect" : "Allow",
         "Action" : [
-          "s3:GetObject"
+          "s3:GetObject",
+          "s3:PutObject"
         ],
-        "Resource" : "${data.aws_s3_bucket.download_lists.arn}/*"
+        "Resource" : "${data.aws_s3_bucket.generate_data.arn}/*"
       },
       {
         "Sid" : "AllowListTopics",

@@ -1,18 +1,4 @@
 {
-    "archive": {
-        "error_zips": {
-            "path": "/mnt/data/archive/error_checker",
-            "threshold": 720,
-            "glob_ops": ["*.zip"],
-            "action": "delete"    
-        },
-        "input_lists": {
-            "path": "/mnt/data/archive",
-            "threshold": 720,
-            "glob_ops": ["*/*input_lists*.zip"],
-            "action": "delete"    
-        }
-    },
     "downloader": {
         "input_lists": {
             "path": "/mnt/data/downloader/lists",
