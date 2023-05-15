@@ -148,7 +148,7 @@ resource "aws_scheduler_schedule" "aws_schedule_purger" {
   flexible_time_window {
     mode = "OFF"
   }
-  schedule_expression = "cron(00 23 * * ? *)"
+  schedule_expression = "cron(00 11,23 * * ? *)"
   target {
     arn      = aws_lambda_function.aws_lambda_purger.arn
     role_arn = aws_iam_role.aws_eventbridge_purger_execution_role.arn
