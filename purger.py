@@ -81,7 +81,7 @@ def get_logger():
 def read_config(prefix):
     """Read in JSON config file for AWS Batch job submission."""
     
-    s3_url = f"s3://{prefix}-download-lists/purger/purger.json"
+    s3_url = f"s3://{prefix}-download-lists/config/purger.json"
     with fsspec.open(s3_url, mode='r') as fh:
         purger_dict = json.load(fh)
     return purger_dict

@@ -20,7 +20,7 @@ resource "aws_lambda_function" "aws_lambda_purger" {
 # Upload purger configuration file to S3 bucket
 resource "aws_s3_object" "aws_s3_bucket_job_configuration" {
   bucket                 = data.aws_s3_bucket.download_lists.id
-  key                    = "purger/purger.json"
+  key                    = "config/purger.json"
   server_side_encryption = "aws:kms"
   source                 = "purger.json"
   etag                   = filemd5("purger.json")
