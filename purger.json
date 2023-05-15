@@ -2,13 +2,13 @@
     "archive": {
         "error_zips": {
             "path": "/mnt/data/archive/error_checker",
-            "threshold": 14,
+            "threshold": 720,
             "glob_ops": ["*.zip"],
             "action": "delete"    
         },
         "input_lists": {
             "path": "/mnt/data/archive",
-            "threshold": 14,
+            "threshold": 720,
             "glob_ops": ["*input_lists.zip"],
             "action": "delete"    
         }
@@ -16,19 +16,19 @@
     "downloader": {
         "input_lists": {
             "path": "/mnt/data/downloader/lists",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["*.json", "*.txt"],
             "action": "archive"    
         },
         "logs": {
             "path": "/mnt/data/downloader/logs",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["*"],
             "action": "delete"    
         },
         "scratch": {
             "path": "/mnt/data/downloader/scratch",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["modis_aqua_level2_download_processes/*", "modis_terra_level2_download_processes/*", "viirs_level2_download_processes/*", "run_report_for_interprocess_communication_for_processing_level_L2_processing_type*.txt"],
             "action": "delete"    
         }
@@ -36,43 +36,43 @@
     "combiner": {
         "input_lists": {
             "path": "/mnt/data/combiner/downloads",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["*.json"],
             "action": "archive"    
         },
         "aqua_quicklook_sst": {
             "path": "/mnt/data/combiner/downloads/MODIS_AQUA_L2_SST_OBPG_QUICKLOOK",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["*.SST.nc"],
             "action": "delete"    
         },
         "terra_quicklook_sst": {
             "path": "/mnt/data/combiner/downloads/MODIS_TERRA_L2_SST_OBPG_QUICKLOOK",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["*.SST.nc"],
             "action": "delete"    
         },
         "viirs_quicklook_sst": {
             "path": "/mnt/data/combiner/downloads/VIIRS_L2_SST_OBPG_QUICKLOOK",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["*.SST.nc"],
             "action": "delete"    
         },
         "downloads": {
             "path": "/mnt/data/combiner/downloads",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["MODIS_AQUA_L2_SST_OBPG/.hidden/*", "MODIS_TERRA_L2_SST_OBPG/.hidden/*", "VIIRS_L2_SST_OBPG/.hidden/*"],
             "action": "delete"    
         },
         "jobs": {
             "path": "/mnt/data/combiner/jobs",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["*job_is_running.txt"],
             "action": "delete"    
         },
         "logs": {
             "path": "/mnt/data/combiner/logs",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["*"],
             "action": "delete"    
         }
@@ -80,25 +80,25 @@
     "processor": {
         "input_lists": {
             "path": "/mnt/data/processor/input",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["*.json"],
             "action": "archive"    
         },
         "logs": {
             "path": "/mnt/data/processor/logs/seatmp_manager",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["*"],
             "action": "delete"    
         },
         "scratch": {
             "path": "/mnt/data/processor/scratch",
-            "threshold": 1,
+            "threshold": 12,
             "glob_ops": ["locks/*", "ghrsst_master_error_file_registry_*.dat", "heart_beat_*.txt"],
             "action": "delete"    
         },
         "reports": {
             "path": "/mnt/data/reporter/processor/scratch/reports",
-            "threshold": 14,
+            "threshold": 720,
             "glob_ops": ["daily_report*.txt", "archive/*"],
             "action": "delete"    
         }
