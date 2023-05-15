@@ -35,14 +35,17 @@ def purger_handler(event, context):
     try:
         logger = get_logger()
         purger_dict = read_config(event["prefix"])
-        logger.info(f"Read config file: s3://{event['prefix']}-download-lists/purger/purger.json")
+        logger.info(f"Read config file: s3://{event['prefix']}/config/purger.json")
         
         # Generate lists of files to archive or delete
         generate_file_lists(purger_dict)
         logger.info(f"Gathered list of files to archive and delete for Generate components from the EFS.")
         
         # Archive and delete files
-        deleted, archived = archive_and_delete(purger_dict, logger)
+        deleted, archived, zipped = archive_and_delete(purger_dict, logger)
+        
+        # Upload archives to S3 bucket
+        upload_archives(zipped, event["prefix"], logger)
         
         # Report on operations
         report_ops(deleted, archived, logger)
@@ -81,7 +84,7 @@ def get_logger():
 def read_config(prefix):
     """Read in JSON config file for AWS Batch job submission."""
     
-    s3_url = f"s3://{prefix}-download-lists/config/purger.json"
+    s3_url = f"s3://{prefix}/config/purger.json"
     with fsspec.open(s3_url, mode='r') as fh:
         purger_dict = json.load(fh)
     return purger_dict
@@ -127,38 +130,54 @@ def archive_and_delete(purger_dict, logger):
                     
     # Compress archive files and place in archive directory
     archived = {}
+    zipped = {}
     date = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S")
     for component, paths in archive.items():
         for path_name, file_list in paths.items():
             if len(file_list) > 0:
                 zip_file = ARCHIVE_DIR.joinpath(component, f"{path_name}_{date}.zip")
-                logger.info(f"{zip_file} created.")
+                logger.info(f"Zip created: {zip_file}.")
                 zip_file.parent.mkdir(parents=True, exist_ok=True)
-                archived[zip_file] = []
+                archived[component] = []
+                zipped[component] = []
                 with zipfile.ZipFile(zip_file, mode='w') as archive:
                     for file in file_list: 
                         archive.write(file, arcname=file.name)
                         if file.is_file(): file.unlink()   # Remove after zipping
                         if file.is_dir(): shutil.rmtree(file)
-                        archived[zip_file].append(file.name)
-    
-    return deleted, archived
+                        archived[component].append(file.name)
+                zipped[component].append(zip_file)
+
+    return deleted, archived, zipped
     
 def report_ops(deleted, archived, logger):
     """Report on files that were deleted and/or archived."""
     
-    if len(deleted) == 0: 
-        logger.info("0 files have been removed from the file system.")
-    else:
-        logger.info(f"{len(deleted)} files have been removed from the file system.")
-    
+    logger.info(f"{len(deleted)} files have been removed from the file system.")
+
     count = 0
     for file_list in archived.values():
         count += len(file_list)
-    if count == 0: 
-        logger.info("0 files have been archived and then removed.")   
-    else:
-         logger.info(f"{count} files have been archived and then removed from the file system.")    
+    logger.info(f"{count} files have been archived and then removed from the file system.")
+        
+def upload_archives(archived_dict, prefix, logger):
+    """Upload text files to S3 bucket."""
+    
+    year = datetime.datetime.now().year
+    try:
+        s3_client = boto3.client("s3")
+        for component, files in archived_dict.items():
+            for zip_file in files:
+                # Upload file to S3 bucket
+                response = s3_client.upload_file(str(zip_file), prefix, f"archive/{component}/{year}/{zip_file.name}", ExtraArgs={"ServerSideEncryption": "aws:kms"})
+                logger.info(f"File uploaded: s3://{prefix}/archive/{component}/{year}/{zip_file.name}.")
+                
+                # Delete file from EFS
+                zip_file.unlink()
+                logger.info(f"File deleted: {zip_file}.")
+    except botocore.exceptions.ClientError as e:
+        logger.error(f"Could not upload archived zip files to: s3://{prefix}/archive/{component}/{year}/.")
+        raise e
     
 def publish_event(message, logger):
     """Publish event to SNS Topic."""
