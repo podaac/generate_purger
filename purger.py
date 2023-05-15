@@ -81,7 +81,7 @@ def get_logger():
 def read_config(prefix):
     """Read in JSON config file for AWS Batch job submission."""
     
-    s3_url = f"s3://{prefix}-download-lists/purger/purger.json"
+    s3_url = f"s3://{prefix}-download-lists/config/purger.json"
     with fsspec.open(s3_url, mode='r') as fh:
         purger_dict = json.load(fh)
     return purger_dict
@@ -101,7 +101,8 @@ def generate_file_lists(purger_dict):
                 for file in files:
                     file_mod = datetime.datetime.fromtimestamp(os.path.getmtime(file), datetime.timezone.utc)
                     file_age = today - file_mod
-                    if (file_age.days >= path_dict["threshold"]):
+                    age_hours = (file_age.total_seconds()) / (60 * 60)
+                    if (age_hours >= path_dict["threshold"]):
                         purger_dict[component][path_name]["file_list"].append(pathlib.Path(file))
     
 def archive_and_delete(purger_dict, logger):
