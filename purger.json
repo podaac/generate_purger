@@ -9,7 +9,7 @@
         "input_lists": {
             "path": "/mnt/data/archive",
             "threshold": 720,
-            "glob_ops": ["*input_lists.zip"],
+            "glob_ops": ["*/*input_lists*.zip"],
             "action": "delete"    
         }
     },
