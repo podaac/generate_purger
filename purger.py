@@ -38,7 +38,7 @@ def purger_handler(event, context):
         logger.info(f"Read config file: s3://{event['prefix']}/config/purger.json")
         
         # Generate lists of files to archive or delete
-        generate_file_lists(purger_dict)
+        generate_file_lists(purger_dict, logger)
         logger.info(f"Gathered list of files to archive and delete for Generate components from the EFS.")
         
         # Archive and delete files
@@ -89,7 +89,7 @@ def read_config(prefix):
         purger_dict = json.load(fh)
     return purger_dict
 
-def generate_file_lists(purger_dict):
+def generate_file_lists(purger_dict, logger):
     """Generate lists of files for each component that will be deleted or
     archived."""
     
@@ -107,6 +107,7 @@ def generate_file_lists(purger_dict):
                     age_hours = (file_age.total_seconds()) / (60 * 60)
                     if (age_hours >= path_dict["threshold"]):
                         purger_dict[component][path_name]["file_list"].append(pathlib.Path(file))
+                        logger.info(f"File to {purger_dict[component][path_name]['action']}: {pathlib.Path(file)}.")
     
 def archive_and_delete(purger_dict, logger):
     """Archive and/or delete files found in list for each component path.
