@@ -23,7 +23,6 @@ resource "aws_s3_object" "aws_s3_bucket_job_configuration" {
   key                    = "config/purger.json"
   server_side_encryption = "aws:kms"
   source                 = "purger.json"
-  etag                   = filemd5("purger.json")
 }
 
 # AWS Lambda role and policy
