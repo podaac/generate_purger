@@ -134,20 +134,22 @@ def archive_and_delete(purger_dict, logger):
     zipped = {}
     date = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S")
     for component, paths in archive.items():
+        archived[component] = {}
+        zipped[component] = {}
         for path_name, file_list in paths.items():
             if len(file_list) > 0:
                 zip_file = ARCHIVE_DIR.joinpath(component, f"{path_name}_{date}.zip")
                 logger.info(f"Zip created: {zip_file}.")
                 zip_file.parent.mkdir(parents=True, exist_ok=True)
-                archived[component] = []
-                zipped[component] = []
+                archived[component][path_name] = []
+                zipped[component][path_name] = []
                 with zipfile.ZipFile(zip_file, mode='w') as archive:
                     for file in file_list: 
                         archive.write(file, arcname=file.name)
                         if file.is_file(): file.unlink()   # Remove after zipping
                         if file.is_dir(): shutil.rmtree(file)
-                        archived[component].append(file.name)
-                zipped[component].append(zip_file)
+                        archived[component][path_name].append(file.name)
+                zipped[component][path_name].append(zip_file)
 
     return deleted, archived, zipped
     
@@ -157,8 +159,9 @@ def report_ops(deleted, archived, logger):
     logger.info(f"{len(deleted)} files have been removed from the file system.")
 
     count = 0
-    for file_list in archived.values():
-        count += len(file_list)
+    for ptype_dict in archived.values():
+        for file_list in ptype_dict.values():
+            count += len(file_list)
     logger.info(f"{count} files have been archived and then removed from the file system.")
         
 def upload_archives(archived_dict, prefix, logger):
@@ -167,15 +170,15 @@ def upload_archives(archived_dict, prefix, logger):
     year = datetime.datetime.now().year
     try:
         s3_client = boto3.client("s3")
-        for component, files in archived_dict.items():
-            for zip_file in files:
-                # Upload file to S3 bucket
-                response = s3_client.upload_file(str(zip_file), prefix, f"archive/{component}/{year}/{zip_file.name}", ExtraArgs={"ServerSideEncryption": "aws:kms"})
-                logger.info(f"File uploaded: s3://{prefix}/archive/{component}/{year}/{zip_file.name}.")
-                
-                # Delete file from EFS
-                zip_file.unlink()
-                logger.info(f"File deleted: {zip_file}.")
+        for component, ptype_dict in archived_dict.items():
+            for zip_files in ptype_dict.values():
+                for zip_file in zip_files:
+                    # Upload file to S3 bucket
+                    response = s3_client.upload_file(str(zip_file), prefix, f"archive/{component}/{year}/{zip_file.name}", ExtraArgs={"ServerSideEncryption": "aws:kms"})
+                    logger.info(f"File uploaded: s3://{prefix}/archive/{component}/{year}/{zip_file.name}.")
+                    # Delete file from EFS
+                    zip_file.unlink()
+                    logger.info(f"File deleted: {zip_file}.")
     except botocore.exceptions.ClientError as e:
         logger.error(f"Could not upload archived zip files to: s3://{prefix}/archive/{component}/{year}/.")
         raise e
