@@ -23,6 +23,7 @@ import zipfile
 import boto3
 import botocore
 import fsspec
+from netCDF4 import Dataset
 
 # Constants
 ARCHIVE_DIR = pathlib.Path("/mnt/data/archive")
@@ -92,7 +93,9 @@ def read_config(prefix):
 def generate_file_lists(purger_dict, logger):
     """Generate lists of files for each component that will be deleted or
     archived."""
-    
+        
+    # Gather list of files past threshold value
+    today = datetime.datetime.now(datetime.timezone.utc)
     for component, paths in purger_dict.items():
         for path_name, path_dict in paths.items():
             purger_dict[component][path_name]["file_list"] = []
@@ -100,7 +103,6 @@ def generate_file_lists(purger_dict, logger):
             for glob_op in path_dict["glob_ops"]:
                 
                 files = glob.glob(f"{path_dict['path']}/{glob_op}")
-                today = datetime.datetime.now(datetime.timezone.utc)
                 for file in files:
                     file_mod = datetime.datetime.fromtimestamp(os.path.getmtime(file), datetime.timezone.utc)
                     file_age = today - file_mod
@@ -109,6 +111,33 @@ def generate_file_lists(purger_dict, logger):
                         purger_dict[component][path_name]["file_list"].append(pathlib.Path(file))
                         logger.info(f"File to {purger_dict[component][path_name]['action']}: {pathlib.Path(file)}.")
     
+    # Determine status of holding tank files and update list
+    sort_holding_tank(purger_dict, today)
+ 
+def sort_holding_tank(purger_dict, today):
+    """Sort the holding tank files by processing type: quicklook or refined."""
+    
+    # Combine quicklook and refined file lists
+    holding_tank = [*set(purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] + purger_dict["combiner"]["holding_tank_refined"]["file_list"])]
+    
+    # Clear dictionary file lists
+    purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] = []
+    purger_dict["combiner"]["holding_tank_refined"]["file_list"] = []
+    
+    # Sort lists by processing type
+    for nc_file in holding_tank:
+        ds = Dataset(nc_file)
+        product_name = ds.product_name
+        if "NRT" in product_name:
+            purger_dict["combiner"]["holding_tank_quicklook"]["file_list"].append(nc_file)
+        else:
+            file_mod = datetime.datetime.fromtimestamp(os.path.getmtime(nc_file), datetime.timezone.utc)
+            file_age = today - file_mod
+            age_hours = (file_age.total_seconds()) / (60 * 60)
+            if (age_hours >=  purger_dict["combiner"]["holding_tank_refined"]["threshold"]):
+                purger_dict["combiner"]["holding_tank_refined"]["file_list"].append(nc_file)
+        ds.close()
+        
 def archive_and_delete(purger_dict, logger):
     """Archive and/or delete files found in list for each component path.
     

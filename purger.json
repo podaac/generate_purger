@@ -38,28 +38,34 @@
             "glob_ops": ["*refined*.json"],
             "action": "archive"    
         },
-        "aqua_quicklook_sst": {
-            "path": "/mnt/data/combiner/downloads/MODIS_AQUA_L2_SST_OBPG_QUICKLOOK",
-            "threshold": 12,
-            "glob_ops": ["*.SST.nc"],
-            "action": "delete"    
-        },
-        "terra_quicklook_sst": {
-            "path": "/mnt/data/combiner/downloads/MODIS_TERRA_L2_SST_OBPG_QUICKLOOK",
-            "threshold": 12,
-            "glob_ops": ["*.SST.nc"],
-            "action": "delete"    
-        },
-        "viirs_quicklook_sst": {
-            "path": "/mnt/data/combiner/downloads/VIIRS_L2_SST_OBPG_QUICKLOOK",
-            "threshold": 12,
-            "glob_ops": ["*.SST.nc"],
-            "action": "delete"    
-        },
-        "downloads": {
+        "downloads_ancillary": {
             "path": "/mnt/data/combiner/downloads",
             "threshold": 12,
             "glob_ops": ["MODIS_AQUA_L2_SST_OBPG/.hidden/*", "MODIS_TERRA_L2_SST_OBPG/.hidden/*", "VIIRS_L2_SST_OBPG/.hidden/*"],
+            "action": "delete"    
+        },
+        "downloads_quicklook": {
+            "path": "/mnt/data/combiner/downloads",
+            "threshold": 72,
+            "glob_ops": ["MODIS_AQUA_L2_SST_OBPG_QUICKLOOK/*", "MODIS_TERRA_L2_SST_OBPG_QUICKLOOK/*", "VIIRS_L2_SST_OBPG_QUICKLOOK/*"],
+            "action": "delete"    
+        },
+        "downloads_refined": {
+            "path": "/mnt/data/combiner/downloads",
+            "threshold": 1800,
+            "glob_ops": ["MODIS_AQUA_L2_SST_OBPG_REFINED/*", "MODIS_TERRA_L2_SST_OBPG_REFINED/*", "VIIRS_L2_SST_OBPG_REFINED/*"],
+            "action": "delete"    
+        },
+        "holding_tank_quicklook": {
+            "path": "/mnt/data/processor/input/holding_tank",
+            "threshold": 72,
+            "glob_ops": ["*"],
+            "action": "delete"    
+        },
+        "holding_tank_refined": {
+            "path": "/mnt/data/processor/input/holding_tank",
+            "threshold": 1800,
+            "glob_ops": ["*"],
             "action": "delete"    
         },
         "jobs": {
