@@ -24,6 +24,10 @@ provider "aws" {
 # Data sources
 data "aws_caller_identity" "current" {}
 
+data "aws_ecr_repository" "partition_submit" {
+  name = "${var.prefix}-purger"
+}
+
 data "aws_efs_access_point" "fsap_purger" {
   access_point_id = var.fsap_id
 }

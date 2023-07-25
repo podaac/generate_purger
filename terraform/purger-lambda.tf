@@ -1,12 +1,10 @@
 # AWS Lambda function
 resource "aws_lambda_function" "aws_lambda_purger" {
-  filename         = "purger.zip"
-  function_name    = "${var.prefix}-purger"
-  role             = aws_iam_role.aws_lambda_execution_role.arn
-  handler          = "purger.purger_handler"
-  runtime          = "python3.9"
-  source_code_hash = filebase64sha256("purger.zip")
-  timeout          = 600
+  image_uri     = "${data.aws_ecr_repository.partition_submit.repository_url}:latest"
+  function_name = "${var.prefix}-purger"
+  role          = aws_iam_role.aws_lambda_execution_role.arn
+  package_type  = "Image"
+  timeout       = 600
   vpc_config {
     subnet_ids         = data.aws_subnets.private_application_subnets.ids
     security_group_ids = data.aws_security_groups.vpc_default_sg.ids

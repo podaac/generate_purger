@@ -1,23 +1,18 @@
 #!/bin/bash
 #
-# Script to create a zipped deployment package for a Lambda function.
+# Script to deploy a container image to an AWS Lambda Function
 #
 # Command line arguments:
-# [1] app_name: Name of application to create a zipped deployment package for
+# [1] function_name: Name of AWS Lambda function name
+# [2] image_uri: URI of container of image
 # 
-# Example usage: ./delpoy-lambda.sh "my-app-name"
+# Example usage: ./delpoy-lambda.sh "my-lambda-function" "account-id.dkr.ecr.region.amazonaws.com/my-lambda-container:tag"
 
-APP_NAME=$1
-ROOT_PATH="$PWD"
+FUNCTION_NAME=$1
+IMAGE_URI=$2
 
-# Install dependencies
-pip install --target $ROOT_PATH/package typing-extensions requests~=2.29.0 fsspec~=2023.3.0 s3fs~=2023.3.0 netCDF4~=1.6.4
+response=$(aws lambda update-function-code --function-name $FUNCTION_NAME --image-uri $IMAGE_URI)
 
-# Zip dependencies
-cd package/
-zip -r ../$APP_NAME.zip .
+aws lambda wait function-updated-v2 --function-name $FUNCTION_NAME
 
-# Zip script
-cd ..
-zip $APP_NAME.zip $APP_NAME.py
-echo "Created: $APP_NAME.zip."
+echo "Container image has been deployed to Lambda."
