@@ -24,39 +24,35 @@ import boto3
 import botocore
 import fsspec
 from netCDF4 import Dataset
+import requests
 
 # Constants
 ARCHIVE_DIR = pathlib.Path("/mnt/data/archive")
 TOPIC_STRING = "batch-job-failure"
+DATASETS = {
+    "aqua": "MODIS_A-JPL-L2P-v2019.0", 
+    "terra": "MODIS_T-JPL-L2P-v2019.0", 
+    "viirs": "VIIRS_NPP-JPL-L2P-v2016.2"
+}
 
 # Functions
 def purger_handler(event, context):
     """Handles events from EventBridge and orchestrates file deletion."""
     
-    try:
-        logger = get_logger()
-        purger_dict = read_config(event["prefix"])
-        logger.info(f"Read config file: s3://{event['prefix']}/config/purger.json")
-        
-        # Generate lists of files to archive or delete
-        generate_file_lists(purger_dict, logger)
-        logger.info(f"Gathered list of files to archive and delete for Generate components from the EFS.")
-        
-        # Archive and delete files
-        deleted, archived, zipped = archive_and_delete(purger_dict, logger)
-        
-        # Upload archives to S3 bucket
-        upload_archives(zipped, event["prefix"], logger)
-        
-        # Report on operations
-        report_ops(deleted, archived, logger)
+    operations = event["operations"]
+    prefix = event["prefix"]
+    logger = get_logger()
     
-    except Exception as error:
-        message = f"The purger encountered the following error: {error}.\n"
-        logger.error(message)
-        logger.error(traceback.format_exc())
-        publish_event(message, logger)
+    # EFS
+    if "efs" in operations:
+        logger.info("Running operations to remove data from EFS.")
+        purge_efs(prefix, logger)
     
+    # S3
+    if "s3" in operations:
+        logger.info("Running operations to remove data from S3.")
+        purge_s3(prefix, logger)
+
 def get_logger():
     """Return a formatted logger object."""
     
@@ -80,7 +76,33 @@ def get_logger():
     logger.addHandler(console_handler)
 
     # Return logger
-    return logger
+    return logger  
+        
+def purge_efs(prefix, logger):
+    """Purge files from the EFS."""
+    
+    try:
+        purger_dict = read_config(prefix)
+        logger.info(f"Read config file: s3://{prefix}/config/purger.json")
+        
+        # Generate lists of files to archive or delete
+        generate_file_lists(purger_dict)
+        logger.info(f"Gathered list of files to archive and delete for Generate components from the EFS.")
+        
+        # Archive and delete files
+        deleted, archived, zipped = archive_and_delete(purger_dict, logger)
+        
+        # Upload archives to S3 bucket
+        upload_archives(zipped, prefix, logger)
+        
+        # Report on operations
+        report_ops(deleted, archived, logger)
+    
+    except Exception as error:
+        message = f"The purger encountered the following error: {error}.\n"
+        logger.error(message)
+        logger.error(traceback.format_exc())
+        publish_event(message, logger)
 
 def read_config(prefix):
     """Read in JSON config file for AWS Batch job submission."""
@@ -90,7 +112,7 @@ def read_config(prefix):
         purger_dict = json.load(fh)
     return purger_dict
 
-def generate_file_lists(purger_dict, logger):
+def generate_file_lists(purger_dict):
     """Generate lists of files for each component that will be deleted or
     archived."""
         
@@ -109,7 +131,6 @@ def generate_file_lists(purger_dict, logger):
                     age_hours = (file_age.total_seconds()) / (60 * 60)
                     if (age_hours >= path_dict["threshold"]):
                         purger_dict[component][path_name]["file_list"].append(pathlib.Path(file))
-                        logger.info(f"File to {purger_dict[component][path_name]['action']}: {pathlib.Path(file)}.")
     
     # Determine status of holding tank files and update list
     sort_holding_tank(purger_dict, today)
@@ -117,13 +138,21 @@ def generate_file_lists(purger_dict, logger):
 def sort_holding_tank(purger_dict, today):
     """Sort the holding tank files by processing type: quicklook or refined."""
     
-    # Combine quicklook and refined file lists
-    holding_tank = [*set(purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] + purger_dict["combiner"]["holding_tank_refined"]["file_list"])]
+    holding_tank = []
+    if "holding_tank_quicklook" in purger_dict["combiner"].keys() and "holding_tank_refined" in purger_dict["combiner"].keys():
+        # Combine quicklook and refined file lists
+        holding_tank = [*set(purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] + purger_dict["combiner"]["holding_tank_refined"]["file_list"])]
     
-    # Clear dictionary file lists
-    purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] = []
-    purger_dict["combiner"]["holding_tank_refined"]["file_list"] = []
-    
+        # Clear dictionary file lists
+        purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] = []
+        purger_dict["combiner"]["holding_tank_refined"]["file_list"] = []
+        
+    elif "holding_tank_quicklook" in purger_dict["combiner"].keys() and "holding_tank_refined" not in purger_dict["combiner"].keys():
+        # Retrieve quicklook only
+        holding_tank = purger_dict["combiner"]["holding_tank_quicklook"]["file_list"]
+        purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] = []
+        purger_dict["combiner"]["holding_tank_refined"]["file_list"] = []  
+        
     # Sort lists by processing type
     for nc_file in holding_tank:
         ds = Dataset(nc_file)
@@ -155,6 +184,7 @@ def archive_and_delete(purger_dict, logger):
                     if file.is_file(): file.unlink()    # Delete file
                     if file.is_dir(): shutil.rmtree(file)    # Delete directory
                     deleted.append(str(file))
+                    logger.info(f"Deleted: {file}.")
                 else:
                     archive[component][path_name].append(file)
                     
@@ -178,6 +208,7 @@ def archive_and_delete(purger_dict, logger):
                         if file.is_file(): file.unlink()   # Remove after zipping
                         if file.is_dir(): shutil.rmtree(file)
                         archived[component][path_name].append(file.name)
+                        logger.info(f"Archived: {file}.")
                 zipped[component][path_name].append(zip_file)
 
     return deleted, archived, zipped
@@ -211,6 +242,163 @@ def upload_archives(archived_dict, prefix, logger):
     except botocore.exceptions.ClientError as e:
         logger.error(f"Could not upload archived zip files to: s3://{prefix}/archive/{component}/{year}/.")
         raise e
+
+def purge_s3(prefix, logger):
+    """Purge L2P S3 buckets of granules that have been ingested."""
+    
+    try:
+        bucket = f"{prefix}-l2p-granules"
+        s3 = boto3.client("s3")
+        
+        # Generate a dictionary of L2P granules organized by dataset
+        s3_dict = generate_s3_list(s3, bucket)
+        logger.info(f"Gathered list of L2P granules still present in the staging bucket: 's3://{prefix}-l2p-granules'.")
+        
+        # Check if granules were found
+        gran_count = 0
+        for dataset in DATASETS.keys():
+            gran_count += len(s3_dict[dataset])
+        
+        if gran_count != 0:
+            # Search CMR for ingested L2P granules
+            del_dict = query_cmr(s3_dict, prefix, logger)
+            logger.info(f"Gathered list of L2P granules that have been ingested.")
+            
+            # Delete ingested L2P granules
+            delete_l2p(s3, bucket, del_dict, logger)
+            logger.info(f"Deleted L2P granules that have been ingested.")
+        else:
+            del_dict = {}
+            for dataset in DATASETS.keys(): del_dict[dataset] = []
+        
+        # Report on operations
+        report_s3(s3_dict, del_dict, logger)
+        
+    except Exception as error:
+        message = f"The purger encountered the following error: {error}.\n"
+        logger.error(message)
+        logger.error(traceback.format_exc())
+        publish_event(message, logger)
+        
+def generate_s3_list(s3, bucket):
+    """Generate list of L2P granules in S3 bucket."""
+    
+    s3_dict = {}
+    for dataset in DATASETS.keys():
+        s3_dict[dataset] = []
+        try:
+            response = s3.list_objects_v2(Bucket=bucket,
+                                          Prefix=dataset)
+            if "Contents" in response.keys():
+                    if len(response["Contents"]) > 0:
+                        s3_dict[dataset].extend(parse_s3_response(response))
+                        
+                        # Page through results
+                        if "NextContinuationToken" in response.keys():
+                            next_token = response["NextContinuationToken"]
+                        else:
+                            next_token = ""
+                        while next_token:
+                            response = s3.list_objects_v2(Bucket=bucket, 
+                                                        Prefix=dataset, 
+                                                        ContinuationToken=next_token)
+                            if len(response["Contents"]) > 0:
+                                s3_dict[dataset].extend(parse_s3_response(response))
+                            if "NextContinuationToken" in response.keys():
+                                next_token = response["NextContinuationToken"]
+                            else:
+                                next_token = ""
+        except botocore.exceptions.ClientError as e:
+            raise e
+        
+    return s3_dict
+
+def parse_s3_response(response):
+    """Retrieve L2P granule names from response."""
+    
+    s3_list = []
+    for key in response["Contents"]:
+        l2p = key["Key"].split('/')[-1]
+        if ".nc.md5" in l2p: continue
+        if ".nc" in l2p: s3_list.append(l2p.split('.nc')[0])
+    return s3_list
+
+def query_cmr(s3_dict, prefix, logger):
+    """Query CMR to determine if granules have been ingested."""
+    
+    if prefix.endswith("-sit") or prefix.endswith("-uat"):
+        cmr_url = "https://cmr.uat.earthdata.nasa.gov/search/granules.umm_json"
+    else:
+        cmr_url = "https://cmr.earthdata.nasa.gov/search/granules.umm_json"
+        
+    token = get_edl_token(prefix, logger)
+    
+    del_dict = {}
+    for dataset in DATASETS.keys(): del_dict[dataset] = []
+    for dataset, l2ps in s3_dict.items():
+        for l2p in l2ps:
+            try:
+                # Search for granule
+                headers = { "Authorization": f"Bearer {token}" }
+                params = {
+                    "short_name": DATASETS[dataset],
+                    "readable_granule_name": l2p
+                }
+                res = requests.post(url=cmr_url, headers=headers, params=params)        
+                coll = res.json()
+
+                # Parse response
+                if "errors" in coll.keys():
+                    logger.error(f"Search error response - {coll['errors']}")
+                elif "hits" in coll.keys() and coll["hits"] > 0:
+                    files = coll["items"][0]["umm"]["DataGranule"]["ArchiveAndDistributionInformation"]
+                    for file in files:
+                        if file["Name"] == f"{l2p}.nc": del_dict[dataset].append(l2p)
+                elif "hits" in coll.keys() and coll["hits"] == 0:
+                    logger.info(f"{l2p} exists in S3 but was not ingested.")
+            except botocore.exceptions.ClientError as e:
+                raise e
+    return del_dict
+
+def get_edl_token(prefix, logger):
+    """Retrieve EDL bearer token from SSM parameter store."""
+    
+    try:
+        ssm_client = boto3.client('ssm', region_name="us-west-2")
+        token = ssm_client.get_parameter(Name=f"{prefix}-edl-token", WithDecryption=True)["Parameter"]["Value"]
+        logger.info("Retrieved EDL token from SSM Parameter Store.")
+        return token
+    except botocore.exceptions.ClientError as error:
+        logger.error("Could not retrieve EDL credentials from SSM Parameter Store.")
+        raise error
+    
+def delete_l2p(s3, bucket, del_dict, logger):
+    """Delete ingested L2P granules from S3 bucket."""
+    
+    for dataset, l2p_list in del_dict.items():
+        for l2p in l2p_list:
+            try:
+                response = s3.delete_object(Bucket=bucket,
+                                            Key=f"{dataset}/{l2p}.nc")
+                logger.info(f"Deleted: {bucket}/{dataset}/{l2p}.nc.")
+                response = s3.delete_object(Bucket=bucket,
+                                            Key=f"{dataset}/{l2p}.nc.md5")
+                logger.info(f"Deleted: {bucket}/{dataset}/{l2p}.nc.md5.")
+            except botocore.exceptions.ClientError as e:
+                raise e
+
+def report_s3(s3_dict, del_dict, logger):
+    """Report on granules that were deleted from S3 bucket."""
+    
+    datasets = s3_dict.keys()
+    to_delete = 0
+    deleted = 0
+    for dataset in datasets:
+        to_delete += len(s3_dict[dataset])
+        deleted += len(del_dict[dataset])
+
+    logger.info(f"{to_delete} L2P granules were found.")
+    logger.info(f"{deleted} L2P granules were deleted.")
     
 def publish_event(message, logger):
     """Publish event to SNS Topic."""
