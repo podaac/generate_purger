@@ -11,7 +11,7 @@ APP_NAME=$1
 ROOT_PATH="$PWD"
 
 # Install dependencies
-pip install --target $ROOT_PATH/package typing-extensions requests~=2.29.0 fsspec~=2023.3.0 s3fs~=2023.3.0
+pip install --target $ROOT_PATH/package typing-extensions requests~=2.29.0 fsspec~=2023.3.0 s3fs~=2023.3.0 netCDF4~=1.6.4
 
 # Zip dependencies
 cd package/
