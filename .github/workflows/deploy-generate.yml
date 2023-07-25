@@ -50,6 +50,9 @@ jobs:
 
       # Check out GitHub repo
       - uses: actions/checkout@v3
+        run: |
+          sudo apt update
+          sudo apt install -y python3-dev build-essential libhdf5-serial-dev netcdf-bin libnetcdf-dev
 
       # Set up Python3
       - uses: actions/setup-python@v4
