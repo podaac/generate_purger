@@ -18,7 +18,7 @@ provider "aws" {
   ignore_tags {
     key_prefixes = ["gsfc-ngap"]
   }
-  region  = var.aws_region
+  region = var.aws_region
 }
 
 # Data sources
@@ -32,8 +32,16 @@ data "aws_kms_key" "aws_s3" {
   key_id = "alias/aws/s3"
 }
 
+data "aws_kms_key" "ssm_key" {
+  key_id = "alias/aws/ssm"
+}
+
 data "aws_s3_bucket" "generate_data" {
-  bucket = "${var.prefix}"
+  bucket = var.prefix
+}
+
+data "aws_s3_bucket" "generate_l2p" {
+  bucket = "${var.prefix}-l2p-granules"
 }
 
 data "aws_security_groups" "vpc_default_sg" {
@@ -49,6 +57,10 @@ data "aws_security_groups" "vpc_default_sg" {
 
 data "aws_sns_topic" "batch_failure_topic" {
   name = "${var.prefix}-batch-job-failure"
+}
+
+data "aws_ssm_parameter" "edl_token" {
+  name = "${var.prefix}-edl-token"
 }
 
 data "aws_subnet" "private_application_subnet" {

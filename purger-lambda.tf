@@ -109,7 +109,10 @@ resource "aws_iam_policy" "aws_lambda_execution_policy" {
         "Action" : [
           "s3:ListBucket"
         ],
-        "Resource" : "${data.aws_s3_bucket.generate_data.arn}"
+        "Resource" : [
+          "${data.aws_s3_bucket.generate_data.arn}",
+          "${data.aws_s3_bucket.generate_l2p.arn}"
+        ]
       },
       {
         "Sid" : "AllowGetPutObject",
@@ -119,6 +122,15 @@ resource "aws_iam_policy" "aws_lambda_execution_policy" {
           "s3:PutObject"
         ],
         "Resource" : "${data.aws_s3_bucket.generate_data.arn}/*"
+      },
+      {
+        "Sid" : "AllowGetDeleteObject",
+        "Effect" : "Allow",
+        "Action" : [
+          "s3:GetObject",
+          "s3:DeleteObject"
+        ],
+        "Resource" : "${data.aws_s3_bucket.generate_l2p.arn}/*"
       },
       {
         "Sid" : "AllowListTopics",
@@ -135,6 +147,23 @@ resource "aws_iam_policy" "aws_lambda_execution_policy" {
           "sns:Publish"
         ],
         "Resource" : "${data.aws_sns_topic.batch_failure_topic.arn}"
+      },
+      {
+        "Sid" : "GetParameter",
+        "Effect" : "Allow",
+        "Action" : [
+          "ssm:GetParameter*"
+        ],
+        "Resource" : "${data.aws_ssm_parameter.edl_token.arn}"
+      },
+      {
+        "Sid" : "DecryptKey",
+        "Effect" : "Allow",
+        "Action" : [
+          "kms:DescribeKey",
+          "kms:Decrypt"
+        ],
+        "Resource" : "${data.aws_kms_key.ssm_key.arn}"
       }
     ]
   })
