@@ -42,21 +42,27 @@ jobs:
           echo "PREFIX_ENV=service-generate-uat" >> $GITHUB_ENV
 
       # OPS environment variables
-      - name: Set Environment Variables & Install Dependencies
+      - name: Set Environment Variables
         if: startsWith(github.ref, 'refs/heads/main') 
         run: |
           echo "TARGET_ENV=OPS" >> $GITHUB_ENV
           echo "PREFIX_ENV=service-generate-ops" >> $GITHUB_ENV
-          sudo apt update
-          sudo apt install -y python3-dev build-essential libhdf5-serial-dev netcdf-bin libnetcdf-dev
 
       # Check out GitHub repo
+      - name: Checkout GitHub repo
       - uses: actions/checkout@v3          
 
       # Set up Python3
+      - name: Set up Python 3.10
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+
+      # Install dependencies
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y python3-dev build-essential libhdf5-serial-dev netcdf-bin libnetcdf-dev libnetcdff-dev
 
       # Create Lambda zip deployment
       - name: Create Lambda Zip Package
