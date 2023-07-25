@@ -42,17 +42,16 @@ jobs:
           echo "PREFIX_ENV=service-generate-uat" >> $GITHUB_ENV
 
       # OPS environment variables
-      - name: Set Environment Variables
+      - name: Set Environment Variables & Install Dependencies
         if: startsWith(github.ref, 'refs/heads/main') 
         run: |
           echo "TARGET_ENV=OPS" >> $GITHUB_ENV
           echo "PREFIX_ENV=service-generate-ops" >> $GITHUB_ENV
-
-      # Check out GitHub repo
-      - uses: actions/checkout@v3
-        run: |
           sudo apt update
           sudo apt install -y python3-dev build-essential libhdf5-serial-dev netcdf-bin libnetcdf-dev
+
+      # Check out GitHub repo
+      - uses: actions/checkout@v3          
 
       # Set up Python3
       - uses: actions/setup-python@v4
