@@ -62,7 +62,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y python3-dev build-essential libhdf5-serial-dev netcdf-bin libnetcdf-dev libnetcdff-dev
+          sudo apt install -y python3-dev build-essential libhdf5-dev libhdf5-serial-dev netcdf-bin libnetcdf-dev libnetcdff-dev
 
       # Create Lambda zip deployment
       - name: Create Lambda Zip Package
