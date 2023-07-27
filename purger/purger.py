@@ -131,11 +131,7 @@ def generate_file_lists(purger_dict, logger):
                 
                 files = glob.glob(f"{path_dict['path']}/{glob_op}")
                 for file in files:
-                    if "holding_tank" in path_name or "downloads_quicklook" == path_name or "downloads_refined" == path_name:
-                        file_mod = datetime.datetime.strptime(file.split('/')[-1].split('.')[1], "%Y%m%dT%H%M%S")
-                        file_mod = file_mod.replace(tzinfo=datetime.timezone.utc)
-                    else:
-                        file_mod = datetime.datetime.fromtimestamp(os.path.getmtime(file), datetime.timezone.utc)
+                    file_mod = datetime.datetime.fromtimestamp(os.path.getmtime(file), datetime.timezone.utc)
                     file_age = today - file_mod
                     age_hours = (file_age.total_seconds()) / (60 * 60)
                     if (age_hours >= path_dict["threshold"]):
@@ -164,19 +160,20 @@ def sort_holding_tank(purger_dict, today, logger):
         
     # Sort lists by processing type
     for nc_file in holding_tank:
-        file_mod = datetime.datetime.strptime(nc_file.name.split('.')[1], "%Y%m%dT%H%M%S")
-        file_mod = file_mod.replace(tzinfo=datetime.timezone.utc)
+        file_date = datetime.datetime.strptime(nc_file.name.split('.')[1], "%Y%m%dT%H%M%S")
+        file_date = file_date.replace(tzinfo=datetime.timezone.utc)
+        file_mod = datetime.datetime.fromtimestamp(os.path.getmtime(nc_file), datetime.timezone.utc)
         # Check if file age is in current month first day of the month as OBPG releases the first of the month differently
-        if file_mod.month == today.month and file_mod.day == 1:
+        if file_date.month == today.month and file_date.day == 1:
             check_processing_type(nc_file, file_mod, today, purger_dict)
         # Refined files for previous months
-        elif file_mod.month < today.month:
+        elif file_date.month < today.month:
             file_age = today - file_mod
             age_hours = (file_age.total_seconds()) / (60 * 60)
             if (age_hours >=  purger_dict["combiner"]["holding_tank_refined"]["threshold"]):
                 purger_dict["combiner"]["holding_tank_refined"]["file_list"].append(nc_file)
         # Quicklook files for current month
-        elif file_mod.month == today.month:
+        elif file_date.month == today.month:
             purger_dict["combiner"]["holding_tank_quicklook"]["file_list"].append(nc_file)
         else:
             logger.info(f"Could not determine file age and threshold to delete: {nc_file}.")
