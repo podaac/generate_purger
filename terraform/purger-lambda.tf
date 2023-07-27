@@ -180,7 +180,8 @@ resource "aws_scheduler_schedule" "aws_schedule_purger" {
     arn      = aws_lambda_function.aws_lambda_purger.arn
     role_arn = aws_iam_role.aws_eventbridge_purger_execution_role.arn
     input = jsonencode({
-      "prefix" : "${var.prefix}"
+      "prefix" : "${var.prefix}",
+      "operations" : ["efs", "s3"]
     })
   }
 }
