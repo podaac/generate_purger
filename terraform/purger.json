@@ -52,7 +52,7 @@
         },
         "downloads_refined": {
             "path": "/mnt/data/combiner/downloads",
-            "threshold": 1800,
+            "threshold": 1824,
             "glob_ops": ["MODIS_AQUA_L2_SST_OBPG_REFINED/*", "MODIS_TERRA_L2_SST_OBPG_REFINED/*", "VIIRS_L2_SST_OBPG_REFINED/*"],
             "action": "delete"    
         },
@@ -64,7 +64,7 @@
         },
         "holding_tank_refined": {
             "path": "/mnt/data/processor/input/holding_tank",
-            "threshold": 1800,
+            "threshold": 1824,
             "glob_ops": ["*"],
             "action": "delete"    
         },

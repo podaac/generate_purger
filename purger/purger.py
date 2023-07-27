@@ -39,6 +39,8 @@ DATASETS = {
 def purger_handler(event, context):
     """Handles events from EventBridge and orchestrates file deletion."""
     
+    start = datetime.datetime.now()
+        
     operations = event["operations"]
     prefix = event["prefix"]
     logger = get_logger()
@@ -52,6 +54,9 @@ def purger_handler(event, context):
     if "s3" in operations:
         logger.info("Running operations to remove data from S3.")
         purge_s3(prefix, logger)
+        
+    end = datetime.datetime.now()
+    logger.info(f"Execution time: {end - start}.")
 
 def get_logger():
     """Return a formatted logger object."""
@@ -86,7 +91,7 @@ def purge_efs(prefix, logger):
         logger.info(f"Read config file: s3://{prefix}/config/purger.json")
         
         # Generate lists of files to archive or delete
-        generate_file_lists(purger_dict)
+        generate_file_lists(purger_dict, logger)
         logger.info(f"Gathered list of files to archive and delete for Generate components from the EFS.")
         
         # Archive and delete files
@@ -112,7 +117,7 @@ def read_config(prefix):
         purger_dict = json.load(fh)
     return purger_dict
 
-def generate_file_lists(purger_dict):
+def generate_file_lists(purger_dict, logger):
     """Generate lists of files for each component that will be deleted or
     archived."""
         
@@ -126,16 +131,20 @@ def generate_file_lists(purger_dict):
                 
                 files = glob.glob(f"{path_dict['path']}/{glob_op}")
                 for file in files:
-                    file_mod = datetime.datetime.fromtimestamp(os.path.getmtime(file), datetime.timezone.utc)
+                    if "holding_tank" in path_name or "downloads_quicklook" == path_name or "downloads_refined" == path_name:
+                        file_mod = datetime.datetime.strptime(file.split('/')[-1].split('.')[1], "%Y%m%dT%H%M%S")
+                        file_mod = file_mod.replace(tzinfo=datetime.timezone.utc)
+                    else:
+                        file_mod = datetime.datetime.fromtimestamp(os.path.getmtime(file), datetime.timezone.utc)
                     file_age = today - file_mod
                     age_hours = (file_age.total_seconds()) / (60 * 60)
                     if (age_hours >= path_dict["threshold"]):
                         purger_dict[component][path_name]["file_list"].append(pathlib.Path(file))
     
     # Determine status of holding tank files and update list
-    sort_holding_tank(purger_dict, today)
+    sort_holding_tank(purger_dict, today, logger)
  
-def sort_holding_tank(purger_dict, today):
+def sort_holding_tank(purger_dict, today, logger):
     """Sort the holding tank files by processing type: quicklook or refined."""
     
     holding_tank = []
@@ -155,17 +164,39 @@ def sort_holding_tank(purger_dict, today):
         
     # Sort lists by processing type
     for nc_file in holding_tank:
-        ds = Dataset(nc_file)
-        product_name = ds.product_name
-        if "NRT" in product_name:
-            purger_dict["combiner"]["holding_tank_quicklook"]["file_list"].append(nc_file)
-        else:
-            file_mod = datetime.datetime.fromtimestamp(os.path.getmtime(nc_file), datetime.timezone.utc)
+        file_mod = datetime.datetime.strptime(nc_file.name.split('.')[1], "%Y%m%dT%H%M%S")
+        file_mod = file_mod.replace(tzinfo=datetime.timezone.utc)
+        # Check if file age is in current month first day of the month as OBPG releases the first of the month differently
+        if file_mod.month == today.month and file_mod.day == 1:
+            check_processing_type(nc_file, file_mod, today, purger_dict)
+        # Refined files for previous months
+        elif file_mod.month < today.month:
             file_age = today - file_mod
             age_hours = (file_age.total_seconds()) / (60 * 60)
             if (age_hours >=  purger_dict["combiner"]["holding_tank_refined"]["threshold"]):
                 purger_dict["combiner"]["holding_tank_refined"]["file_list"].append(nc_file)
-        ds.close()
+        # Quicklook files for current month
+        elif file_mod.month == today.month:
+            purger_dict["combiner"]["holding_tank_quicklook"]["file_list"].append(nc_file)
+        else:
+            logger.info(f"Could not determine file age and threshold to delete: {nc_file}.")
+            logger.info(f"File date: {file_mod}. Today's date: {today}.")
+            logger.info("File not deleted.")
+        
+def check_processing_type(nc_file, file_mod, today, purger_dict):
+    """Determine processing type of NetCDF file and if passed threshold add to 
+    dictionary."""
+    
+    ds = Dataset(nc_file)
+    product_name = ds.product_name
+    if "NRT" in product_name:
+        purger_dict["combiner"]["holding_tank_quicklook"]["file_list"].append(nc_file)
+    else:
+        file_age = today - file_mod
+        age_hours = (file_age.total_seconds()) / (60 * 60)
+        if (age_hours >=  purger_dict["combiner"]["holding_tank_refined"]["threshold"]):
+            purger_dict["combiner"]["holding_tank_refined"]["file_list"].append(nc_file)
+    ds.close()
         
 def archive_and_delete(purger_dict, logger):
     """Archive and/or delete files found in list for each component path.
@@ -257,15 +288,11 @@ def purge_s3(prefix, logger):
         # Check if granules were found
         gran_count = 0
         for dataset in DATASETS.keys():
-            gran_count += len(s3_dict[dataset])
+            gran_count += len(s3_dict[dataset])        
         
         if gran_count != 0:
             # Search CMR for ingested L2P granules
-            del_dict = query_cmr(s3_dict, prefix, logger)
-            logger.info(f"Gathered list of L2P granules that have been ingested.")
-            
-            # Delete ingested L2P granules
-            delete_l2p(s3, bucket, del_dict, logger)
+            del_dict = query_cmr_and_delete(s3, bucket, s3_dict, prefix, logger)
             logger.info(f"Deleted L2P granules that have been ingested.")
         else:
             del_dict = {}
@@ -323,7 +350,7 @@ def parse_s3_response(response):
         if ".nc" in l2p: s3_list.append(l2p.split('.nc')[0])
     return s3_list
 
-def query_cmr(s3_dict, prefix, logger):
+def query_cmr_and_delete(s3, bucket, s3_dict, prefix, logger):
     """Query CMR to determine if granules have been ingested."""
     
     if prefix.endswith("-sit") or prefix.endswith("-uat"):
@@ -334,8 +361,10 @@ def query_cmr(s3_dict, prefix, logger):
     token = get_edl_token(prefix, logger)
     
     del_dict = {}
-    for dataset in DATASETS.keys(): del_dict[dataset] = []
     for dataset, l2ps in s3_dict.items():
+        logger.info(f"Located {len(l2ps)} {dataset} granules in S3 bucket.")
+        logger.info(f"Querying and deleting data for: {DATASETS[dataset]}.")
+        del_dict[dataset] = []
         for l2p in l2ps:
             try:
                 # Search for granule
@@ -344,7 +373,7 @@ def query_cmr(s3_dict, prefix, logger):
                     "short_name": DATASETS[dataset],
                     "readable_granule_name": l2p
                 }
-                res = requests.post(url=cmr_url, headers=headers, params=params)        
+                res = requests.post(url=cmr_url, headers=headers, params=params)      
                 coll = res.json()
 
                 # Parse response
@@ -353,11 +382,19 @@ def query_cmr(s3_dict, prefix, logger):
                 elif "hits" in coll.keys() and coll["hits"] > 0:
                     files = coll["items"][0]["umm"]["DataGranule"]["ArchiveAndDistributionInformation"]
                     for file in files:
-                        if file["Name"] == f"{l2p}.nc": del_dict[dataset].append(l2p)
+                        if file["Name"] == f"{l2p}.nc": 
+                            del_dict[dataset].append(l2p)
+                            delete_l2p(s3, bucket, dataset, l2p ,logger)
                 elif "hits" in coll.keys() and coll["hits"] == 0:
                     logger.info(f"{l2p} exists in S3 but was not ingested.")
             except botocore.exceptions.ClientError as e:
                 raise e
+            except Exception as e:
+                logger.error(f"Error encountered - {e}")
+                logger.info(f"Response - {res}")  
+                logger.info(f"L2P granule could not be located: {l2p}.")
+                logger.info("Discontinuing search and removal. Deletion operations will continue at next run.")
+                return del_dict
     return del_dict
 
 def get_edl_token(prefix, logger):
@@ -372,20 +409,18 @@ def get_edl_token(prefix, logger):
         logger.error("Could not retrieve EDL credentials from SSM Parameter Store.")
         raise error
     
-def delete_l2p(s3, bucket, del_dict, logger):
+def delete_l2p(s3, bucket, dataset, l2p, logger):
     """Delete ingested L2P granules from S3 bucket."""
     
-    for dataset, l2p_list in del_dict.items():
-        for l2p in l2p_list:
-            try:
-                response = s3.delete_object(Bucket=bucket,
-                                            Key=f"{dataset}/{l2p}.nc")
-                logger.info(f"Deleted: {bucket}/{dataset}/{l2p}.nc.")
-                response = s3.delete_object(Bucket=bucket,
-                                            Key=f"{dataset}/{l2p}.nc.md5")
-                logger.info(f"Deleted: {bucket}/{dataset}/{l2p}.nc.md5.")
-            except botocore.exceptions.ClientError as e:
-                raise e
+    try:
+        response = s3.delete_object(Bucket=bucket,
+                                    Key=f"{dataset}/{l2p}.nc")
+        logger.info(f"Deleted: {bucket}/{dataset}/{l2p}.nc.")
+        response = s3.delete_object(Bucket=bucket,
+                                    Key=f"{dataset}/{l2p}.nc.md5")
+        logger.info(f"Deleted: {bucket}/{dataset}/{l2p}.nc.md5.")
+    except botocore.exceptions.ClientError as e:
+        raise e
 
 def report_s3(s3_dict, del_dict, logger):
     """Report on granules that were deleted from S3 bucket."""

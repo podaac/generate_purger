@@ -4,8 +4,8 @@ resource "aws_lambda_function" "aws_lambda_purger" {
   function_name = "${var.prefix}-purger"
   role          = aws_iam_role.aws_lambda_execution_role.arn
   package_type  = "Image"
-  timeout       = 600
-  memory_size   = 256
+  timeout       = 900
+  memory_size   = 512
   vpc_config {
     subnet_ids         = data.aws_subnets.private_application_subnets.ids
     security_group_ids = data.aws_security_groups.vpc_default_sg.ids
