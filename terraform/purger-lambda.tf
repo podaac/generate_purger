@@ -5,7 +5,7 @@ resource "aws_lambda_function" "aws_lambda_purger" {
   role          = aws_iam_role.aws_lambda_execution_role.arn
   package_type  = "Image"
   timeout       = 900
-  memory_size   = 512
+  memory_size   = 3072
   vpc_config {
     subnet_ids         = data.aws_subnets.private_application_subnets.ids
     security_group_ids = data.aws_security_groups.vpc_default_sg.ids
@@ -180,7 +180,8 @@ resource "aws_scheduler_schedule" "aws_schedule_purger" {
     arn      = aws_lambda_function.aws_lambda_purger.arn
     role_arn = aws_iam_role.aws_eventbridge_purger_execution_role.arn
     input = jsonencode({
-      "prefix" : "${var.prefix}"
+      "prefix" : "${var.prefix}",
+      "operations" : ["efs", "s3"]
     })
   }
 }
