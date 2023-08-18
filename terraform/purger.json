@@ -1,0 +1,140 @@
+{
+    "downloader": {
+        "input_lists_quicklook": {
+            "path": "/mnt/data/downloader/lists",
+            "threshold": 12,
+            "glob_ops": ["*quicklook*.json", "*quicklook*.txt"],
+            "action": "archive"    
+        },
+        "input_lists_refined": {
+            "path": "/mnt/data/downloader/lists",
+            "threshold": 96,
+            "glob_ops": ["*refined*.json", "*refined*.txt"],
+            "action": "archive"    
+        },
+        "logs": {
+            "path": "/mnt/data/downloader/logs",
+            "threshold": 96,
+            "glob_ops": ["*"],
+            "action": "delete"    
+        },
+        "scratch": {
+            "path": "/mnt/data/downloader/scratch",
+            "threshold": 96,
+            "glob_ops": ["modis_aqua_level2_download_processes/*", "modis_terra_level2_download_processes/*", "viirs_level2_download_processes/*", "run_report_for_interprocess_communication_for_processing_level_L2_processing_type*.txt"],
+            "action": "delete"    
+        }
+    },
+    "combiner": {
+        "input_lists_quicklook": {
+            "path": "/mnt/data/combiner/downloads",
+            "threshold": 12,
+            "glob_ops": ["*quicklook*.json"],
+            "action": "archive"    
+        },
+        "input_lists_refined": {
+            "path": "/mnt/data/combiner/downloads",
+            "threshold": 96,
+            "glob_ops": ["*refined*.json"],
+            "action": "archive"    
+        },
+        "downloads_ancillary": {
+            "path": "/mnt/data/combiner/downloads",
+            "threshold": 12,
+            "glob_ops": ["MODIS_AQUA_L2_SST_OBPG/.hidden/*", "MODIS_TERRA_L2_SST_OBPG/.hidden/*", "VIIRS_L2_SST_OBPG/.hidden/*"],
+            "action": "delete"    
+        },
+        "downloads_quicklook": {
+            "path": "/mnt/data/combiner/downloads",
+            "threshold": 72,
+            "glob_ops": ["MODIS_AQUA_L2_SST_OBPG_QUICKLOOK/*", "MODIS_TERRA_L2_SST_OBPG_QUICKLOOK/*", "VIIRS_L2_SST_OBPG_QUICKLOOK/*"],
+            "action": "delete"    
+        },
+        "downloads_refined": {
+            "path": "/mnt/data/combiner/downloads",
+            "threshold": 1824,
+            "glob_ops": ["MODIS_AQUA_L2_SST_OBPG_REFINED/*", "MODIS_TERRA_L2_SST_OBPG_REFINED/*", "VIIRS_L2_SST_OBPG_REFINED/*"],
+            "action": "delete"    
+        },
+        "holding_tank_quicklook": {
+            "path": "/mnt/data/processor/input/holding_tank",
+            "threshold": 72,
+            "glob_ops": ["*"],
+            "action": "delete"    
+        },
+        "holding_tank_refined": {
+            "path": "/mnt/data/processor/input/holding_tank",
+            "threshold": 1824,
+            "glob_ops": ["*"],
+            "action": "delete"    
+        },
+        "jobs": {
+            "path": "/mnt/data/combiner/jobs",
+            "threshold": 12,
+            "glob_ops": ["*job_is_running.txt"],
+            "action": "delete"    
+        },
+        "logs_quicklook": {
+            "path": "/mnt/data/combiner/logs",
+            "threshold": 12,
+            "glob_ops": ["*QUICKLOOK*"],
+            "action": "delete"    
+        },
+        "logs_refined": {
+            "path": "/mnt/data/combiner/logs",
+            "threshold": 96,
+            "glob_ops": ["*REFINED*"],
+            "action": "delete"    
+        }
+    },
+    "processor": {
+        "input_lists_quicklook": {
+            "path": "/mnt/data/processor/input",
+            "threshold": 12,
+            "glob_ops": ["*quicklook*.json"],
+            "action": "archive"    
+        },
+        "input_lists_refined": {
+            "path": "/mnt/data/processor/input",
+            "threshold": 96,
+            "glob_ops": ["*refined*.json"],
+            "action": "archive"    
+        },
+        "logs_quicklook": {
+            "path": "/mnt/data/processor/logs/seatmp_manager",
+            "threshold": 12,
+            "glob_ops": ["*QUICKLOOK*"],
+            "action": "delete"    
+        },
+        "logs_refined": {
+            "path": "/mnt/data/processor/logs/seatmp_manager",
+            "threshold": 96,
+            "glob_ops": ["*REFINED*"],
+            "action": "delete"    
+        },
+        "scratch": {
+            "path": "/mnt/data/processor/scratch",
+            "threshold": 96,
+            "glob_ops": ["locks/*", "heart_beat_*.txt"],
+            "action": "delete"    
+        },
+        "scratch_quicklook": {
+            "path": "/mnt/data/processor/scratch",
+            "threshold": 12,
+            "glob_ops": ["ghrsst_master_error_file_registry_quicklook*.dat"],
+            "action": "delete"    
+        },
+        "scratch_refined": {
+            "path": "/mnt/data/processor/scratch",
+            "threshold": 96,
+            "glob_ops": ["ghrsst_master_error_file_registry_refined*.dat"],
+            "action": "delete"    
+        },
+        "reports": {
+            "path": "/mnt/data/reporter/processor/scratch/reports",
+            "threshold": 720,
+            "glob_ops": ["daily_report*.txt", "archive/*"],
+            "action": "delete"    
+        }
+    }
+}
