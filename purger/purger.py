@@ -142,21 +142,14 @@ def generate_file_lists(purger_dict, logger):
  
 def sort_holding_tank(purger_dict, today, logger):
     """Sort the holding tank files by processing type: quicklook or refined."""
-    
-    holding_tank = []
-    if "holding_tank_quicklook" in purger_dict["combiner"].keys() and "holding_tank_refined" in purger_dict["combiner"].keys():
-        # Combine quicklook and refined file lists
-        holding_tank = [*set(purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] + purger_dict["combiner"]["holding_tank_refined"]["file_list"])]
-    
-        # Clear dictionary file lists
-        purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] = []
-        purger_dict["combiner"]["holding_tank_refined"]["file_list"] = []
         
-    elif "holding_tank_quicklook" in purger_dict["combiner"].keys() and "holding_tank_refined" not in purger_dict["combiner"].keys():
-        # Retrieve quicklook only
-        holding_tank = purger_dict["combiner"]["holding_tank_quicklook"]["file_list"]
-        purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] = []
-        purger_dict["combiner"]["holding_tank_refined"]["file_list"] = []  
+    # Combine quicklook and refined file lists
+    holding_tank = [*set(purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] + purger_dict["combiner"]["holding_tank_refined_modis"]["file_list"] + purger_dict["combiner"]["holding_tank_refined_viirs"]["file_list"])]
+
+    # Clear dictionary file lists
+    purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] = []
+    purger_dict["combiner"]["holding_tank_refined_modis"]["file_list"] = []
+    purger_dict["combiner"]["holding_tank_refined_viirs"]["file_list"] = [] 
         
     # Sort lists by processing type
     for nc_file in holding_tank:
@@ -168,10 +161,7 @@ def sort_holding_tank(purger_dict, today, logger):
             check_processing_type(nc_file, file_mod, today, purger_dict)
         # Refined files for previous months
         elif file_date.month < today.month:
-            file_age = today - file_mod
-            age_hours = (file_age.total_seconds()) / (60 * 60)
-            if (age_hours >=  purger_dict["combiner"]["holding_tank_refined"]["threshold"]):
-                purger_dict["combiner"]["holding_tank_refined"]["file_list"].append(nc_file)
+            sort_refined_holding(nc_file, today, file_mod, purger_dict)
         # Quicklook files for current month
         elif file_date.month == today.month:
             purger_dict["combiner"]["holding_tank_quicklook"]["file_list"].append(nc_file)
@@ -189,11 +179,22 @@ def check_processing_type(nc_file, file_mod, today, purger_dict):
     if "NRT" in product_name:
         purger_dict["combiner"]["holding_tank_quicklook"]["file_list"].append(nc_file)
     else:
-        file_age = today - file_mod
-        age_hours = (file_age.total_seconds()) / (60 * 60)
-        if (age_hours >=  purger_dict["combiner"]["holding_tank_refined"]["threshold"]):
-            purger_dict["combiner"]["holding_tank_refined"]["file_list"].append(nc_file)
+        sort_refined_holding(nc_file, today, file_mod, purger_dict)
     ds.close()
+    
+def sort_refined_holding(nc_file, today, file_mod, purger_dict):
+    """Determine whether file is MODIS or VIIRS and if outside of threshold."""
+    
+    file_age = today - file_mod
+    age_hours = (file_age.total_seconds()) / (60 * 60)
+    
+    if "MODIS" in nc_file.name:
+        if (age_hours >= purger_dict["combiner"]["holding_tank_refined_modis"]["threshold"]):
+            purger_dict["combiner"]["holding_tank_refined_modis"]["file_list"].append(nc_file)
+            
+    if "VIIRS" in nc_file.name:
+        if (age_hours >= purger_dict["combiner"]["holding_tank_refined_viirs"]["threshold"]):
+            purger_dict["combiner"]["holding_tank_refined_viirs"]["file_list"].append(nc_file)
         
 def archive_and_delete(purger_dict, logger):
     """Archive and/or delete files found in list for each component path.
