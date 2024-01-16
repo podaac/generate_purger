@@ -160,7 +160,7 @@ def sort_holding_tank(purger_dict, today, logger):
         if file_date.month == today.month and file_date.day == 1:
             check_processing_type(nc_file, file_mod, today, purger_dict)
         # Refined files for previous months
-        elif file_date.month < today.month:
+        elif file_date.year < today.year or file_date.month < today.month:
             sort_refined_holding(nc_file, today, file_mod, purger_dict)
         # Quicklook files for current month
         elif file_date.month == today.month:
