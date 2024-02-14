@@ -50,10 +50,16 @@
             "glob_ops": ["MODIS_AQUA_L2_SST_OBPG_QUICKLOOK/*", "MODIS_TERRA_L2_SST_OBPG_QUICKLOOK/*", "VIIRS_L2_SST_OBPG_QUICKLOOK/*"],
             "action": "delete"    
         },
-        "downloads_refined": {
+        "downloads_refined_modis": {
             "path": "/mnt/data/combiner/downloads",
             "threshold": 1824,
-            "glob_ops": ["MODIS_AQUA_L2_SST_OBPG_REFINED/*", "MODIS_TERRA_L2_SST_OBPG_REFINED/*", "VIIRS_L2_SST_OBPG_REFINED/*"],
+            "glob_ops": ["MODIS_AQUA_L2_SST_OBPG_REFINED/*", "MODIS_TERRA_L2_SST_OBPG_REFINED/*"],
+            "action": "delete"    
+        },
+        "downloads_refined_viirs": {
+            "path": "/mnt/data/combiner/downloads",
+            "threshold": 72,
+            "glob_ops": ["VIIRS_L2_SST_OBPG_REFINED/*"],
             "action": "delete"    
         },
         "holding_tank_quicklook": {
@@ -62,10 +68,16 @@
             "glob_ops": ["*"],
             "action": "delete"    
         },
-        "holding_tank_refined": {
+        "holding_tank_refined_modis": {
             "path": "/mnt/data/processor/input/holding_tank",
             "threshold": 1824,
-            "glob_ops": ["*"],
+            "glob_ops": ["*MODIS*"],
+            "action": "delete"    
+        },
+        "holding_tank_refined_viirs": {
+            "path": "/mnt/data/processor/input/holding_tank",
+            "threshold": 72,
+            "glob_ops": ["*VIIRS*"],
             "action": "delete"    
         },
         "jobs": {
