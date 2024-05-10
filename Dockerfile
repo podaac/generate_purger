@@ -1,6 +1,6 @@
 # Stage 0 - Create from aws-lambda-python:3.12 image
 FROM amazon/aws-lambda-python:3.12
-RUN dnf update -y && dnf install -y tcsh netcdf
+RUN dnf update -y && dnf install -y tcsh
 
 # Stage 1 - Install dependencies
 # FROM stage0 as stage1
