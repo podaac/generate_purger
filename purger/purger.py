@@ -32,7 +32,8 @@ TOPIC_STRING = "batch-job-failure"
 DATASETS = {
     "aqua": "MODIS_A-JPL-L2P-v2019.0", 
     "terra": "MODIS_T-JPL-L2P-v2019.0", 
-    "viirs": "VIIRS_NPP-JPL-L2P-v2016.2"
+    "viirs": "VIIRS_NPP-JPL-L2P-v2016.2", 
+    "jpss1": "VIIRS_JPSS1-JPL-L2P-v2024.0"
 }
 
 # Functions
@@ -144,12 +145,16 @@ def sort_holding_tank(purger_dict, today, logger):
     """Sort the holding tank files by processing type: quicklook or refined."""
         
     # Combine quicklook and refined file lists
-    holding_tank = [*set(purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] + purger_dict["combiner"]["holding_tank_refined_modis"]["file_list"] + purger_dict["combiner"]["holding_tank_refined_viirs"]["file_list"])]
+    holding_tank = [*set(purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] + 
+                         purger_dict["combiner"]["holding_tank_refined_modis"]["file_list"] + 
+                         purger_dict["combiner"]["holding_tank_refined_viirs"]["file_list"] + 
+                         purger_dict["combiner"]["holding_tank_refined_jpss1"]["file_list"])]
 
     # Clear dictionary file lists
     purger_dict["combiner"]["holding_tank_quicklook"]["file_list"] = []
     purger_dict["combiner"]["holding_tank_refined_modis"]["file_list"] = []
     purger_dict["combiner"]["holding_tank_refined_viirs"]["file_list"] = [] 
+    purger_dict["combiner"]["holding_tank_refined_jpss1"]["file_list"] = [] 
         
     # Sort lists by processing type
     for nc_file in holding_tank:
@@ -193,8 +198,12 @@ def sort_refined_holding(nc_file, today, file_mod, purger_dict):
             purger_dict["combiner"]["holding_tank_refined_modis"]["file_list"].append(nc_file)
             
     if "VIIRS" in nc_file.name:
-        if (age_hours >= purger_dict["combiner"]["holding_tank_refined_viirs"]["threshold"]):
-            purger_dict["combiner"]["holding_tank_refined_viirs"]["file_list"].append(nc_file)
+        if "JPSS1" in nc_file.name: #VIIRS and JPSS1
+            if (age_hours >= purger_dict["combiner"]["holding_tank_refined_jpss1"]["threshold"]):
+                purger_dict["combiner"]["holding_tank_refined_jpss1"]["file_list"].append(nc_file)
+        else: # Just VIIRS
+            if (age_hours >= purger_dict["combiner"]["holding_tank_refined_viirs"]["threshold"]):
+                purger_dict["combiner"]["holding_tank_refined_viirs"]["file_list"].append(nc_file)
         
 def archive_and_delete(purger_dict, logger):
     """Archive and/or delete files found in list for each component path.
